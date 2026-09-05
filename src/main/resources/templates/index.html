@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HireLens — Resume Ranker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  body{font-family:'Inter',sans-serif}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .glass{backdrop-filter:blur(12px);background:rgba(255,255,255,.9)}
+  .drop{border:2px dashed #cbd5e1;transition:.2s}
+  .drop.drag{border-color:#4f46e5;background:#eef2ff}
+  .score-ring{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:white}
+</style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800">
+<!-- NAV -->
+<nav class="sticky top-0 z-30 glass border-b border-slate-200">
+  <div class="max-w-[1280px] mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600 grid place-items-center text-white text-lg"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+      <div>
+        <div class="font-extrabold leading-none">HireLens Cloud</div>
+        <div class="text-xs text-slate-500 -mt-0.5">Upload JD + 100 PDFs → ranked in seconds</div>
+      </div>
+      <span class="hidden md:inline-flex ml-3 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">Live • No login</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/health" target="_blank" class="hidden md:inline text-xs px-3 py-1.5 rounded-full border bg-white hover:bg-slate-50">health <span class="w-2 h-2 bg-emerald-500 rounded-full inline-block ml-1"></span></a>
+      <button onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})" class="text-sm px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-black">How it works</button>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-[1280px] mx-auto px-4 py-6 grid lg:grid-cols-[1.15fr_.85fr] gap-6">
+  <!-- LEFT: JD -->
+  <div class="space-y-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold flex items-center gap-2"><span class="w-7 h-7 rounded-lg bg-indigo-600 text-white grid place-items-center text-sm">1</span> Job Description</h2>
+        <div class="flex gap-2">
+          <button id="demoBtn" class="text-xs px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"><i class="fa-solid fa-bolt mr-1"></i> Load Demo JD</button>
+          <label class="text-xs px-3 py-1.5 rounded-full bg-white border hover:bg-slate-50 cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload JD .txt <input id="jdFile" type="file" accept=".txt,.pdf,.md" class="hidden"/></label>
+        </div>
+      </div>
+      <textarea id="jd" rows="16" placeholder="Paste job description here... (Requirements, Responsibilities, Skills)" class="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm leading-relaxed mono">Senior Full Stack Engineer — HireLens (Remote / Bangalore)
+
+We are building HireLens, a modern hiring platform. Looking for a Senior Full Stack Engineer who can own features end-to-end.
+
+Requirements:
+- 3+ years with Java, Spring Boot, REST APIs, Microservices
+- Strong React, TypeScript, JavaScript, HTML/CSS
+- SQL, PostgreSQL, MongoDB, Redis
+- AWS, Docker, Kubernetes, CI/CD, Git
+- Experience with Kafka or RabbitMQ is a plus
+- Familiarity with Python, Machine Learning or LLM is bonus
+- Agile, Communication, Leadership
+
+Nice to have: GraphQL, Node.js, Terraform, Spark, Figma
+
+Responsibilities: Design scalable APIs, build delightful UIs, mentor juniors, own DevOps pipeline.</textarea>
+      <div class="flex items-center justify-between mt-2 text-xs text-slate-500">
+        <span id="jdStats">~180 words • 18 skills detected</span>
+        <span class="hidden md:inline">Tip: paste full JD for best ranking</span>
+      </div>
+    </div>
+
+    <div id="how" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <h3 class="font-bold mb-2"><i class="fa-solid fa-circle-info text-indigo-600 mr-1"></i> How ranking works</h3>
+      <ol class="text-sm text-slate-600 space-y-1 list-decimal ml-5">
+        <li><b>PDF text extraction</b> via PDFBox (handles scanned fallback as text)</li>
+        <li><b>Skill taxonomy</b> (80+ skills with aliases) → matched vs missing</li>
+        <li><b>TF-IDF cosine</b> (60%) + <b>skill coverage</b> (40%) → blended 0–100 score</li>
+        <li>Ranked table + heatmap + snippet preview. Export CSV.</li>
+      </ol>
+      <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">Deploy-ready for Railway: <span class="font-mono">Dockerfile</span> + <span class="font-mono">railway.json</span> + <span class="font-mono">PORT</span> env. Works with 100 PDFs per batch.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Upload -->
+  <div class="space-y-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <h2 class="font-bold flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-lg bg-emerald-600 text-white grid place-items-center text-sm">2</span> Resumes (PDF) <span class="ml-auto text-xs font-normal px-2 py-1 rounded-full bg-slate-100 border" id="fileCount">0 files</span></h2>
+      <div id="drop" class="drop rounded-2xl p-8 text-center bg-slate-50 cursor-pointer">
+        <div class="w-12 h-12 rounded-xl bg-white border grid place-items-center mx-auto text-slate-500 text-xl"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div class="font-semibold mt-3">Drag & drop PDFs here</div>
+        <div class="text-sm text-slate-500">or click to browse • max 100 files • 20MB each</div>
+        <input id="files" type="file" multiple accept=".pdf,.txt" class="hidden"/>
+        <div class="mt-3 flex justify-center gap-2">
+          <button id="demoResumesBtn" class="text-xs px-3 py-1.5 rounded-full bg-white border hover:bg-slate-50">Generate 6 demo PDFs</button>
+          <button id="clearBtn" class="text-xs px-3 py-1.5 rounded-full bg-white border hover:bg-slate-50">Clear</button>
+        </div>
+      </div>
+      <div id="fileList" class="mt-3 space-y-2 max-h-[220px] overflow-auto"></div>
+      <button id="analyzeBtn" class="w-full mt-4 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Rank Resumes — <span id="analyzeCount">0</span> files
+      </button>
+      <div id="progress" class="hidden mt-3">
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div id="bar" class="h-full bg-indigo-600 w-0 transition-all"></div></div>
+        <div class="text-xs text-slate-500 mt-1 mono" id="progressText">Uploading…</div>
+      </div>
+      <div id="error" class="hidden mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700"></div>
+    </div>
+
+    <div class="bg-gradient-to-br from-slate-900 to-indigo-900 rounded-2xl p-5 text-white">
+      <div class="text-sm opacity-80">Built for Railway/Vercel</div>
+      <div class="font-bold text-lg leading-tight">Deploy in 2 minutes</div>
+      <pre class="mt-3 p-3 rounded-xl bg-black/30 text-xs mono overflow-auto">railway up
+# or docker build -t hirelens . && docker run -p 8080:8080 hirelens</pre>
+      <div class="text-xs opacity-70 mt-2">Health: <span class="font-mono">/health</span> • API: <span class="font-mono">POST /api/analyze</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="resultsWrap" class="max-w-[1280px] mx-auto px-4 pb-10 hidden">
+  <div class="grid md:grid-cols-4 gap-4 mb-4">
+    <div class="bg-white rounded-2xl border p-4"><div class="text-xs text-slate-500">Total Resumes</div><div id="statTotal" class="text-2xl font-extrabold">0</div><div class="text-xs text-slate-400 mono" id="statTook">took 0ms</div></div>
+    <div class="bg-white rounded-2xl border p-4"><div class="text-xs text-slate-500">Strong Fits (≥70)</div><div id="statStrong" class="text-2xl font-extrabold text-emerald-600">0</div></div>
+    <div class="bg-white rounded-2xl border p-4"><div class="text-xs text-slate-500">Avg Score</div><div id="statAvg" class="text-2xl font-extrabold">0</div></div>
+    <div class="bg-white rounded-2xl border p-4"><div class="text-xs text-slate-500">Top Skill Gap</div><div id="statGap" class="text-sm font-bold">—</div><div class="text-xs text-slate-400">most missing</div></div>
+  </div>
+
+  <div class="grid lg:grid-cols-[1.6fr_.7fr] gap-6">
+    <div class="bg-white rounded-2xl border overflow-hidden">
+      <div class="p-4 flex items-center justify-between border-b">
+        <h3 class="font-bold"><i class="fa-solid fa-ranking-star text-indigo-600 mr-2"></i>Ranked Results</h3>
+        <div class="flex gap-2">
+          <input id="search" placeholder="Filter by name/skill…" class="text-sm px-3 py-1.5 rounded-full border bg-slate-50 outline-none"/>
+          <button id="exportBtn" class="text-xs px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-black"><i class="fa-solid fa-file-csv mr-1"></i> Export CSV</button>
+        </div>
+      </div>
+      <div class="overflow-auto max-h-[560px]">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-50 text-xs text-slate-500"><tr><th class="text-left p-3">#</th><th class="text-left p-3">Candidate</th><th class="text-left p-3">Score</th><th class="text-left p-3">Verdict</th><th class="text-left p-3">Matched / Missing</th><th class="text-left p-3">Snippet</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl border p-4">
+        <h4 class="font-bold text-sm mb-3"><i class="fa-solid fa-fire text-orange-500 mr-1"></i> Skill Demand Heatmap</h4>
+        <div id="heatmap" class="space-y-2"></div>
+        <div class="text-xs text-slate-400 mt-2">Coverage across uploaded resumes</div>
+      </div>
+      <div class="bg-white rounded-2xl border p-4">
+        <h4 class="font-bold text-sm mb-2">Required Skills (from JD)</h4>
+        <div id="requiredSkills" class="flex flex-wrap gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="max-w-[1280px] mx-auto px-4 py-8 text-center text-xs text-slate-400">HireLens Cloud • Java 21 • Spring Boot 3.3 • PDFBox 3.0 • Railway-ready • Built for real recruiters</footer>
+
+<script>
+const jdEl = document.getElementById('jd');
+const filesEl = document.getElementById('files');
+const drop = document.getElementById('drop');
+const list = document.getElementById('fileList');
+const countEl = document.getElementById('fileCount');
+const analyzeCount = document.getElementById('analyzeCount');
+const jdFileEl = document.getElementById('jdFile');
+let selectedFiles = [];
+
+function renderList(){
+  list.innerHTML = '';
+  selectedFiles.forEach((f,i)=>{
+    const row = document.createElement('div');
+    row.className='flex items-center gap-3 p-2 rounded-xl border bg-white';
+    row.innerHTML = `<div class="w-8 h-8 rounded-lg bg-red-50 border border-red-200 grid place-items-center text-red-600 text-xs"><i class="fa-solid fa-file-pdf"></i></div>
+      <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${f.name}</div><div class="text-xs text-slate-500">${(f.size/1024).toFixed(1)} KB</div></div>
+      <button class="text-xs px-2 py-1 rounded-full border hover:bg-slate-50" data-i="${i}">✕</button>`;
+    row.querySelector('button').onclick = (e)=>{ selectedFiles.splice(i,1); renderList(); };
+    list.appendChild(row);
+  });
+  countEl.textContent = selectedFiles.length + ' files';
+  analyzeCount.textContent = selectedFiles.length;
+  document.getElementById('analyzeBtn').disabled = selectedFiles.length===0;
+}
+
+drop.addEventListener('click', ()=> filesEl.click());
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag')});
+drop.addEventListener('dragleave', ()=> drop.classList.remove('drag'));
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); drop.classList.remove('drag');
+  selectedFiles.push(...Array.from(e.dataTransfer.files).filter(f=> f.name.toLowerCase().endsWith('.pdf') || f.name.toLowerCase().endsWith('.txt')));
+  if(selectedFiles.length>100) selectedFiles = selectedFiles.slice(0,100);
+  renderList();
+});
+filesEl.addEventListener('change', e=>{
+  selectedFiles.push(...Array.from(e.target.files));
+  if(selectedFiles.length>100) selectedFiles = selectedFiles.slice(0,100);
+  renderList(); filesEl.value='';
+});
+document.getElementById('clearBtn').onclick = ()=>{ selectedFiles=[]; renderList(); };
+
+document.getElementById('demoBtn').onclick = async ()=>{
+  const r = await fetch('/api/demo-jd'); const j = await r.json(); jdEl.value = j.jd;
+};
+jdFileEl.addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  jdEl.value = await f.text();
+});
+
+ // Generate demo PDFs client-side by creating text files (server parses as text)
+document.getElementById('demoResumesBtn').onclick = ()=>{
+  const demos = [
+    {name:'Aarav_Patel_FullStack.pdf', text: `Aarav Patel\nSenior Full Stack Engineer\nJava Spring Boot, Spring, Microservices, REST, React, TypeScript, JavaScript, PostgreSQL, MongoDB, Redis, AWS, Docker, Kubernetes, CI/CD, Git, Kafka, Agile, Communication, Leadership\nBuilt scalable microservices with Spring Boot and React. Deployed on AWS EKS with Docker.`},
+    {name:'Sneha_Rao_Frontend.pdf', text: `Sneha Rao\nFrontend Engineer\nReact, TypeScript, JavaScript, HTML, CSS, Tailwind, Figma, Node.js, GraphQL, Git\nExpert in React and design systems. No Java or Spring.`},
+    {name:'Vikram_Data.pdf', text: `Vikram Singh\nData Engineer\nPython, Spark, Hadoop, Airflow, ETL, SQL, PostgreSQL, AWS, Docker, Terraform\nFocus on data pipelines, no frontend.`},
+    {name:'Priya_AI.pdf', text: `Priya Nair\nAI Engineer\nPython, Machine Learning, LLM, RAG, Langchain, PyTorch, TensorFlow, Pandas, AWS, Docker\nBuilt RAG chatbots, light on Java.`},
+    {name:'Rohan_Java_Backend.pdf', text: `Rohan Mehta\nJava Backend Engineer\nJava, Spring Boot, Microservices, REST, SQL, PostgreSQL, MongoDB, Redis, AWS, Docker, Kubernetes, Git, RabbitMQ, Agile\nStrong backend, limited React.`},
+    {name:'Ishita_FullStack.pdf', text: `Ishita Desai\nFull Stack Developer\nJava, Spring Boot, React, TypeScript, Node.js, PostgreSQL, AWS, Docker, Git, Communication\nWell-rounded full stack.`},
+  ];
+  demos.forEach(d=>{
+    const blob = new Blob([d.text], {type:'application/pdf'});
+    const file = new File([blob], d.name, {type:'application/pdf'});
+    selectedFiles.push(file);
+  });
+  renderList();
+};
+
+let lastResults = [];
+document.getElementById('analyzeBtn').onclick = async ()=>{
+  const jd = jdEl.value.trim();
+  if(!jd){ showError('Paste Job Description first'); return; }
+  if(selectedFiles.length===0){ showError('Upload at least 1 PDF'); return; }
+  hideError();
+  const fd = new FormData();
+  fd.append('jd', jd);
+  selectedFiles.forEach(f=> fd.append('files', f, f.name));
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing…';
+  document.getElementById('progress').classList.remove('hidden');
+  document.getElementById('bar').style.width='35%';
+  document.getElementById('progressText').textContent='Uploading '+selectedFiles.length+' resumes…';
+  try{
+    const res = await fetch('/api/analyze', {method:'POST', body: fd});
+    document.getElementById('bar').style.width='85%';
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Failed');
+    document.getElementById('bar').style.width='100%';
+    setTimeout(()=> document.getElementById('progress').classList.add('hidden'), 600);
+    renderResults(data);
+  }catch(e){ showError(e.message); document.getElementById('progress').classList.add('hidden'); }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-wand-magic-sparkles"></i> Rank Resumes — <span id="analyzeCount">'+selectedFiles.length+'</span> files'; }
+};
+
+function showError(m){ const e=document.getElementById('error'); e.textContent=m; e.classList.remove('hidden'); }
+function hideError(){ document.getElementById('error').classList.add('hidden'); }
+
+function renderResults(data){
+  lastResults = data.results;
+  document.getElementById('resultsWrap').classList.remove('hidden');
+  document.getElementById('statTotal').textContent = data.count;
+  document.getElementById('statTook').textContent = 'took '+data.tookMs+' ms';
+  const strong = data.results.filter(r=> r.score>=70).length;
+  document.getElementById('statStrong').textContent = strong;
+  const avg = (data.results.reduce((s,r)=> s+r.score,0)/data.count).toFixed(1);
+  document.getElementById('statAvg').textContent = avg;
+  // top gap
+  let worst = Object.entries(data.skillCoverage).sort((a,b)=> a[1]-b[1])[0];
+  document.getElementById('statGap').textContent = worst ? worst[0]+' ('+worst[1]+'/'+data.count+')' : '—';
+
+  // required skills pills
+  const req = document.getElementById('requiredSkills');
+  req.innerHTML = '';
+  (data.requiredSkills||[]).forEach(s=>{
+    const span=document.createElement('span');
+    span.className='px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium';
+    span.textContent=s;
+    req.appendChild(span);
+  });
+
+  // heatmap
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML='';
+  Object.entries(data.skillCoverage).forEach(([skill, covered])=>{
+    const pct = Math.round(covered/data.count*100);
+    const row=document.createElement('div');
+    row.innerHTML = `<div class="flex items-center justify-between text-xs"><span class="font-medium">${skill}</span><span class="mono text-slate-500">${covered}/${data.count} • ${pct}%</span></div>
+      <div class="h-2 bg-slate-100 rounded-full overflow-hidden mt-1"><div class="h-full ${pct>60?'bg-emerald-500': pct>30?'bg-amber-500':'bg-red-500'}" style="width:${pct}%"></div></div>`;
+    hm.appendChild(row);
+  });
+
+  renderTable(data.results);
+  document.getElementById('resultsWrap').scrollIntoView({behavior:'smooth'});
+}
+
+function renderTable(rows){
+  const tbody = document.getElementById('tbody');
+  const q = document.getElementById('search').value.toLowerCase();
+  tbody.innerHTML='';
+  rows.filter(r=> !q || r.candidateName.toLowerCase().includes(q) || r.fileName.toLowerCase().includes(q) || r.matchedSkills.join(' ').toLowerCase().includes(q))
+  .forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.className='border-t hover:bg-slate-50';
+    const color = r.score>=70?'#059669': r.score>=45?'#d97706':'#dc2626';
+    const verdictColor = r.verdict==='Strong Fit'?'bg-emerald-50 text-emerald-700 border-emerald-200': r.verdict==='Moderate Fit'?'bg-amber-50 text-amber-700 border-amber-200':'bg-red-50 text-red-700 border-red-200';
+    tr.innerHTML = `
+      <td class="p-3 font-mono text-xs text-slate-500">${i+1}</td>
+      <td class="p-3"><div class="font-semibold truncate max-w-[150px]">${r.candidateName}</div><div class="text-xs text-slate-500 truncate max-w-[150px]">${r.fileName}</div><div class="text-[11px] text-slate-400 mono">${r.wordCount} words • TF-IDF ${r.tfidfScore} • Skills ${r.skillScore}</div></td>
+      <td class="p-3"><div class="flex items-center gap-2"><div class="score-ring" style="background:${color}">${r.score}</div><div class="text-xs text-slate-500 leading-tight">matched<br><b>${r.matchedSkills.length}</b> skills</div></div></td>
+      <td class="p-3"><span class="px-2 py-1 rounded-full border text-xs font-semibold ${verdictColor}">${r.verdict}</span></td>
+      <td class="p-3 max-w-[260px]">
+        <div class="flex flex-wrap gap-1">${r.matchedSkills.map(s=>`<span class="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px]">${s}</span>`).join('') || '<span class="text-xs text-slate-400">none</span>'}</div>
+        ${r.missingSkills.length? `<div class="mt-1 flex flex-wrap gap-1">${r.missingSkills.slice(0,6).map(s=>`<span class="px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-600 text-[11px]">${s}</span>`).join('')}${r.missingSkills.length>6? `<span class="text-[11px] text-slate-400">+${r.missingSkills.length-6} more</span>`:''}</div>`:''}
+      </td>
+      <td class="p-3 max-w-[280px]"><div class="text-xs text-slate-600 line-clamp-3">${r.snippet}</div><button class="text-xs text-indigo-600 hover:underline mt-1" onclick="navigator.clipboard.writeText(\`${r.snippet.replace(/`/g,'')}\`); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy snippet',1500)">Copy snippet</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+document.getElementById('search').addEventListener('input', ()=> renderTable(lastResults));
+document.getElementById('exportBtn').onclick = ()=>{
+  if(!lastResults.length) return;
+  let csv = 'rank,score,verdict,candidate,file,matched_skills,missing_skills,tfidf,skillScore,snippet\n';
+  lastResults.forEach((r,i)=>{
+    const row = [i+1, r.score, r.verdict, `"${r.candidateName}"`, `"${r.fileName}"`, `"${r.matchedSkills.join(';')}"`, `"${r.missingSkills.join(';')}"`, r.tfidfScore, r.skillScore, `"${r.snippet.replace(/"/g,'""')}"`].join(',');
+    csv += row + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hirelens_ranked.csv'; a.click();
+};
+renderList();
+</script>
+</body>
+</html>

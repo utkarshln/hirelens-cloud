@@ -1,5 +1,7 @@
 # HireLens Cloud — Resume Ranker
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/utkarshln/hirelens-cloud)
+
 Interactive Java web app: paste JD + drop 100 PDFs → instant ranked table + skill heatmap + missing skills. Built for Railway/Vercel.
 
 **Live locally:** http://localhost:8080 — health at `/health`
